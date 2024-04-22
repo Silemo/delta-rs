@@ -5,7 +5,7 @@ use object_store::{
     path::Path as ObjectStorePath, GetOptions, GetResult, ListResult,
     MultipartId, ObjectMeta, PutOptions, PutResult, Result as ObjectStoreResult
 };
-use datafusion_objectstore_hdfs::object_store::hdfs::HadoopFileSystem;
+use object_store_hdfs::HadoopFileSystem;
 use std::ops::Range;
 use std::sync::Arc;
 use tokio::io::AsyncWrite;
@@ -25,7 +25,7 @@ impl HadoopFileStorageBackend {
     pub fn try_new(path: &str) -> ObjectStoreResult<Self> {
         Ok(Self {
             root_url: Arc::new(Self::path_to_root_url(path.as_ref())?),
-            inner: Arc::new(HadoopFileSystem::new(path).unwrap()),
+            inner: Arc::new(HadoopFileSystem::new_from_full_path(path).unwrap()),
         })
     }
 
