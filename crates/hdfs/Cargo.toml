@@ -16,7 +16,7 @@ deltalake-core = { version = "0.17.0", path = "../core", features = [
     "datafusion",
 ] }
 lazy_static = "1"
-datafusion-objectstore-hdfs = { version = "0.1.4", path = "../../../datafusion-objectstore-hdfs/hdfs", features = ["hdfs3"] }
+object_store_hdfs = { version = "0.1", git = "https://github.com/Silemo/object_store_hdfs"}
 
 # workspace dependecies
 async-trait = { workspace = true }
