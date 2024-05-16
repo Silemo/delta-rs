@@ -154,7 +154,7 @@ impl ObjectStore for HadoopFileStorageBackend {
         &self,
         location: &ObjectStorePath,
     ) -> ObjectStoreResult<(MultipartId, Box<dyn AsyncWrite + Unpin + Send>)> {
-        self.inner.put_multipart(location).await
+        todo!("Not yet implemented")
     }
 
     async fn abort_multipart(
@@ -162,6 +162,6 @@ impl ObjectStore for HadoopFileStorageBackend {
         location: &ObjectStorePath,
         multipart_id: &MultipartId,
     ) -> ObjectStoreResult<()> {
-        self.inner.abort_multipart(location, multipart_id).await
+        todo!("Not yet implemented")
     }
 }
