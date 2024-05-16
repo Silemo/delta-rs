@@ -43,6 +43,8 @@ class RawDeltaTable:
     def table_uri(self) -> str: ...
     def version(self) -> int: ...
     def get_latest_version(self) -> int: ...
+    def get_num_index_cols(self) -> int: ...
+    def get_stats_columns(self) -> Optional[List[str]]: ...
     def metadata(self) -> RawDeltaTableMetaData: ...
     def protocol_versions(self) -> List[Any]: ...
     def load_version(self, version: int) -> None: ...
@@ -154,6 +156,14 @@ class RawDeltaTable:
         custom_metadata: Optional[Dict[str, str]],
     ) -> None: ...
     def cleanup_metadata(self) -> None: ...
+    def check_can_write_timestamp_ntz(self, schema: pyarrow.Schema) -> None: ...
+    def load_cdf(
+        self,
+        starting_version: int = 0,
+        ending_version: Optional[int] = None,
+        starting_timestamp: Optional[str] = None,
+        ending_timestamp: Optional[str] = None,
+    ) -> pyarrow.RecordBatchReader: ...
 
 def rust_core_version() -> str: ...
 def write_new_deltalake(
@@ -173,6 +183,7 @@ def write_to_deltalake(
     data: pyarrow.RecordBatchReader,
     partition_by: Optional[List[str]],
     mode: str,
+    table: Optional[RawDeltaTable],
     schema_mode: Optional[str],
     predicate: Optional[str],
     name: Optional[str],
@@ -204,6 +215,9 @@ def create_deltalake(
     custom_metadata: Optional[Dict[str, str]],
 ) -> None: ...
 def batch_distinct(batch: pyarrow.RecordBatch) -> pyarrow.RecordBatch: ...
+def get_num_idx_cols_and_stats_columns(
+    table: Optional[RawDeltaTable], configuration: Optional[Mapping[str, Optional[str]]]
+) -> Tuple[int, Optional[List[str]]]: ...
 
 # Can't implement inheritance (see note in src/schema.rs), so this is next
 # best thing.
@@ -712,10 +726,17 @@ class DeltaFileSystemHandler:
 
     def __init__(
         self,
-        root: str,
-        options: dict[str, str] | None = None,
-        known_sizes: dict[str, int] | None = None,
+        table_uri: str,
+        options: Dict[str, str] | None = None,
+        known_sizes: Dict[str, int] | None = None,
     ) -> None: ...
+    @classmethod
+    def from_table(
+        cls,
+        table: RawDeltaTable,
+        options: Dict[str, str] | None = None,
+        known_sizes: Dict[str, int] | None = None,
+    ) -> "DeltaFileSystemHandler": ...
     def get_type_name(self) -> str: ...
     def copy_file(self, src: str, dst: str) -> None:
         """Copy a file.
@@ -767,7 +788,7 @@ class DeltaFileSystemHandler:
     def open_input_file(self, path: str) -> ObjectInputFile:
         """Open an input file for random access reading."""
     def open_output_stream(
-        self, path: str, metadata: dict[str, str] | None = None
+        self, path: str, metadata: Dict[str, str] | None = None
     ) -> ObjectOutputStream:
         """Open an output stream for sequential writing."""
 
