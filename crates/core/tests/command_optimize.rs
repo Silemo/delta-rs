@@ -249,7 +249,7 @@ async fn test_optimize_with_partitions() -> Result<(), Box<dyn Error>> {
     let partition_values = partition_adds[0].partition_values()?;
     assert_eq!(
         partition_values.get("date"),
-        Some(&deltalake_core::kernel::Scalar::String(
+        Some(&delta_kernel::expressions::Scalar::String(
             "2022-05-22".to_string()
         ))
     );
@@ -298,7 +298,7 @@ async fn test_conflict_for_remove_actions() -> Result<(), Box<dyn Error>> {
     let operation = DeltaOperation::Delete { predicate: None };
     CommitBuilder::default()
         .with_actions(vec![Action::Remove(remove)])
-        .build(Some(other_dt.snapshot()?), other_dt.log_store(), operation)?
+        .build(Some(other_dt.snapshot()?), other_dt.log_store(), operation)
         .await?;
 
     let maybe_metrics = plan

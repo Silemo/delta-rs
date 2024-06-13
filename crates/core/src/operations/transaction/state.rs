@@ -5,19 +5,17 @@ use arrow::array::{ArrayRef, BooleanArray};
 use arrow::datatypes::{
     DataType, Field as ArrowField, Schema as ArrowSchema, SchemaRef as ArrowSchemaRef,
 };
+use datafusion::execution::context::SessionContext;
 use datafusion::physical_optimizer::pruning::{PruningPredicate, PruningStatistics};
 use datafusion_common::scalar::ScalarValue;
-use datafusion_common::Column;
+use datafusion_common::{Column, ToDFSchema};
 use datafusion_expr::Expr;
 use itertools::Itertools;
 use object_store::ObjectStore;
 use parquet::arrow::arrow_reader::ArrowReaderOptions;
 use parquet::arrow::async_reader::{ParquetObjectReader, ParquetRecordBatchStreamBuilder};
 
-use crate::delta_datafusion::{
-    get_null_of_arrow_type, logical_expr_to_physical_expr, to_correct_scalar_value,
-    DataFusionMixins,
-};
+use crate::delta_datafusion::{get_null_of_arrow_type, to_correct_scalar_value, DataFusionMixins};
 use crate::errors::DeltaResult;
 use crate::kernel::{Add, EagerSnapshot};
 use crate::table::state::DeltaTableState;
@@ -31,11 +29,20 @@ impl DeltaTableState {
         &self,
         object_store: Arc<dyn ObjectStore>,
     ) -> DeltaResult<ArrowSchemaRef> {
-        if let Some(add) = self
-            .file_actions()?
-            .iter()
-            .max_by_key(|obj| obj.modification_time)
-        {
+        self.snapshot.physical_arrow_schema(object_store).await
+    }
+}
+
+impl EagerSnapshot {
+    /// Get the physical table schema.
+    ///
+    /// This will construct a schema derived from the parquet schema of the latest data file,
+    /// and fields for partition columns from the schema defined in table meta data.
+    pub async fn physical_arrow_schema(
+        &self,
+        object_store: Arc<dyn ObjectStore>,
+    ) -> DeltaResult<ArrowSchemaRef> {
+        if let Some(add) = self.file_actions()?.max_by_key(|obj| obj.modification_time) {
             let file_meta = add.try_into()?;
             let file_reader = ParquetObjectReader::new(object_store, file_meta);
             let file_schema = ParquetRecordBatchStreamBuilder::new_with_options(
@@ -144,7 +151,9 @@ impl<'a> AddContainer<'a> {
     /// so evaluating expressions is inexact. However, excluded files are guaranteed (for a correct log)
     /// to not contain matches by the predicate expression.
     pub fn predicate_matches(&self, predicate: Expr) -> DeltaResult<impl Iterator<Item = &Add>> {
-        let expr = logical_expr_to_physical_expr(predicate, &self.schema);
+        //let expr = logical_expr_to_physical_expr(predicate, &self.schema);
+        let expr = SessionContext::new()
+            .create_physical_expr(predicate, &self.schema.clone().to_dfschema()?)?;
         let pruning_predicate = PruningPredicate::try_new(expr, self.schema.clone())?;
         Ok(self
             .inner

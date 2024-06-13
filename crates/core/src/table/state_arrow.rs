@@ -14,9 +14,9 @@ use arrow_array::{
     StringArray, StructArray, TimestampMicrosecondArray, TimestampMillisecondArray,
 };
 use arrow_schema::{DataType, Field, Fields, TimeUnit};
+use delta_kernel::column_mapping::ColumnMappingMode;
 use itertools::Itertools;
 
-use super::config::ColumnMappingMode;
 use super::state::DeltaTableState;
 use crate::errors::DeltaTableError;
 use crate::kernel::{Add, DataType as DeltaDataType, StructType};
@@ -149,7 +149,13 @@ impl DeltaTableState {
             .map(
                 |name| -> Result<arrow::datatypes::DataType, DeltaTableError> {
                     let schema = metadata.schema()?;
-                    let field = schema.field_with_name(name)?;
+                    let field =
+                        schema
+                            .field(name)
+                            .ok_or(DeltaTableError::MetadataError(format!(
+                                "Invalid partition column {0}",
+                                name
+                            )))?;
                     Ok(field.data_type().try_into()?)
                 },
             )
@@ -173,12 +179,12 @@ impl DeltaTableState {
                 .map(|name| -> Result<_, DeltaTableError> {
                     let physical_name = self
                         .schema()
-                        .field_with_name(name)
-                        .or(Err(DeltaTableError::MetadataError(format!(
+                        .field(name)
+                        .ok_or(DeltaTableError::MetadataError(format!(
                             "Invalid partition column {0}",
                             name
-                        ))))?
-                        .physical_name()?
+                        )))?
+                        .physical_name(column_mapping_mode)?
                         .to_string();
                     Ok((physical_name, name.as_str()))
                 })
@@ -397,8 +403,7 @@ impl DeltaTableState {
         flatten: bool,
     ) -> Result<arrow::record_batch::RecordBatch, DeltaTableError> {
         let stats: Vec<Option<Stats>> = self
-            .file_actions()?
-            .iter()
+            .file_actions_iter()?
             .map(|f| {
                 f.get_stats()
                     .map_err(|err| DeltaTableError::InvalidStatsJson { json_err: err })
@@ -573,7 +578,7 @@ impl DeltaTableState {
                 // into StructArrays, until it is consolidated into a single array.
                 columnar_stats = columnar_stats
                     .into_iter()
-                    .group_by(|col_stat| {
+                    .chunk_by(|col_stat| {
                         if col_stat.path.len() < level {
                             col_stat.path.clone()
                         } else {
@@ -675,7 +680,6 @@ impl<'a> SchemaLeafIterator<'a> {
         SchemaLeafIterator {
             fields_remaining: schema
                 .fields()
-                .iter()
                 .map(|field| (vec![field.name().as_ref()], field.data_type()))
                 .collect(),
         }

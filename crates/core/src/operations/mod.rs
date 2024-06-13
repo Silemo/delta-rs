@@ -37,7 +37,10 @@ pub use ::datafusion::physical_plan::common::collect as collect_sendable_stream;
 use arrow::record_batch::RecordBatch;
 use optimize::OptimizeBuilder;
 use restore::RestoreBuilder;
+use set_tbl_properties::SetTablePropertiesBuilder;
 
+#[cfg(all(feature = "cdf", feature = "datafusion"))]
+mod cdc;
 #[cfg(feature = "datafusion")]
 pub mod constraints;
 #[cfg(feature = "datafusion")]
@@ -48,6 +51,7 @@ mod load;
 pub mod load_cdf;
 #[cfg(feature = "datafusion")]
 pub mod merge;
+pub mod set_tbl_properties;
 #[cfg(feature = "datafusion")]
 pub mod update;
 #[cfg(feature = "datafusion")]
@@ -218,6 +222,11 @@ impl DeltaOps {
     #[must_use]
     pub fn drop_constraints(self) -> DropConstraintBuilder {
         DropConstraintBuilder::new(self.0.log_store, self.0.state.unwrap())
+    }
+
+    /// Set table properties
+    pub fn set_tbl_properties(self) -> SetTablePropertiesBuilder {
+        SetTablePropertiesBuilder::new(self.0.log_store, self.0.state.unwrap())
     }
 }
 

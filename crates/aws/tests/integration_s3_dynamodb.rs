@@ -5,15 +5,13 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use aws_config::SdkConfig;
 use aws_sdk_dynamodb::types::BillingMode;
 use deltalake_aws::logstore::{RepairLogEntryResult, S3DynamoDbLogStore};
-use deltalake_aws::storage::S3StorageOptions;
+use deltalake_aws::storage::{s3_constants, S3StorageOptions};
 use deltalake_aws::{CommitEntry, DynamoDbConfig, DynamoDbLockClient};
 use deltalake_core::kernel::{Action, Add, DataType, PrimitiveType, StructField, StructType};
 use deltalake_core::logstore::LogStore;
-use deltalake_core::operations::transaction::{CommitBuilder, PreparedCommit};
-use deltalake_core::parquet::file::metadata;
+use deltalake_core::operations::transaction::CommitBuilder;
 use deltalake_core::protocol::{DeltaOperation, SaveMode};
 use deltalake_core::storage::commit_uri_from_version;
 use deltalake_core::storage::StorageOptions;
@@ -41,6 +39,7 @@ fn make_client() -> TestResult<DynamoDbLockClient> {
     let options: S3StorageOptions = S3StorageOptions::try_default().unwrap();
     Ok(DynamoDbLockClient::try_new(
         &options.sdk_config,
+        None,
         None,
         None,
         None,
@@ -343,7 +342,7 @@ async fn create_incomplete_commit_entry(
     };
     let prepared = CommitBuilder::default()
         .with_actions(actions)
-        .build(Some(table.snapshot()?), table.log_store(), operation)?
+        .build(Some(table.snapshot()?), table.log_store(), operation)
         .into_prepared_commit_future()
         .await?;
 
@@ -392,7 +391,7 @@ async fn prepare_table(context: &IntegrationContext, table_name: &str) -> TestRe
     // create delta table
     let table = DeltaOps(table)
         .create()
-        .with_columns(schema.fields().clone())
+        .with_columns(schema.fields().cloned())
         .await?;
     println!("table created: {table:?}");
     Ok(table)
@@ -412,7 +411,7 @@ async fn append_to_table(
     let version = CommitBuilder::default()
         .with_actions(actions)
         .with_app_metadata(metadata.unwrap_or_default())
-        .build(Some(table.snapshot()?), table.log_store(), operation)?
+        .build(Some(table.snapshot()?), table.log_store(), operation)
         .await?
         .version();
     Ok(version)

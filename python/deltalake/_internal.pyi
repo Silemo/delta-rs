@@ -92,6 +92,12 @@ class RawDeltaTable:
         raise_if_not_exists: bool,
         custom_metadata: Optional[Dict[str, str]],
     ) -> None: ...
+    def set_table_properties(
+        self,
+        properties: Dict[str, str],
+        raise_if_not_exists: bool,
+        custom_metadata: Optional[Dict[str, str]],
+    ) -> None: ...
     def restore(
         self,
         target: Optional[Any],
@@ -208,6 +214,7 @@ def create_deltalake(
     schema: pyarrow.Schema,
     partition_by: List[str],
     mode: str,
+    raise_if_key_not_exists: bool,
     name: Optional[str],
     description: Optional[str],
     configuration: Optional[Mapping[str, Optional[str]]],
