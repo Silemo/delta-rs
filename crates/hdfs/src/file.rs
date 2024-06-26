@@ -1,14 +1,13 @@
-use object_store::ObjectStore;
 use bytes::Bytes;
 use futures::stream::BoxStream;
 use object_store::{
+    ObjectStore, PutPayload, PutMultipartOpts,
     path::Path as ObjectStorePath, GetOptions, GetResult, ListResult,
-    MultipartId, ObjectMeta, PutOptions, PutResult, Result as ObjectStoreResult
+    MultipartUpload, ObjectMeta, PutOptions, PutResult, Result as ObjectStoreResult
 };
 use object_store_hdfs::HadoopFileSystem;
 use std::ops::Range;
 use std::sync::Arc;
-use tokio::io::AsyncWrite;
 use url::Url;
 
 pub(crate) const STORE_NAME: &str = "HdfsObjectStore";
@@ -43,6 +42,7 @@ impl HadoopFileStorageBackend {
         })
     }
 
+    // TODO Remove code if not useful
     /// Return an absolute filesystem path of the given location
     fn path_to_filesystem(&self, location: &ObjectStorePath) -> String {
         let mut url = self.root_url.as_ref().clone();
@@ -65,14 +65,14 @@ impl std::fmt::Display for HadoopFileStorageBackend {
 
 #[async_trait::async_trait]
 impl ObjectStore for HadoopFileStorageBackend {
-    async fn put(&self, location: &ObjectStorePath, bytes: Bytes) -> ObjectStoreResult<PutResult> {
+    async fn put(&self, location: &ObjectStorePath, bytes: PutPayload) -> ObjectStoreResult<PutResult> {
         self.inner.put(location, bytes).await
     }
 
     async fn put_opts(
         &self,
         location: &ObjectStorePath,
-        bytes: Bytes,
+        bytes: PutPayload,
         options: PutOptions,
     ) -> ObjectStoreResult<PutResult> {
         self.inner.put_opts(location, bytes, options).await
@@ -145,23 +145,17 @@ impl ObjectStore for HadoopFileStorageBackend {
         from: &ObjectStorePath,
         to: &ObjectStorePath,
     ) -> ObjectStoreResult<()> {
-        let path_from = self.path_to_filesystem(from);
-        let path_to = self.path_to_filesystem(to);
-        self.inner.rename(path_from.as_ref(), path_to.as_ref()).await
+        // Is path_to_filesystem necessary(?)
+        //let path_from = self.path_to_filesystem(from);
+        //let path_to = self.path_to_filesystem(to);
+        self.inner.rename(from, to).await
     }
 
-    async fn put_multipart(
+    async fn put_multipart_opts(
         &self,
         location: &ObjectStorePath,
-    ) -> ObjectStoreResult<(MultipartId, Box<dyn AsyncWrite + Unpin + Send>)> {
-        todo!("Not yet implemented")
-    }
-
-    async fn abort_multipart(
-        &self,
-        location: &ObjectStorePath,
-        multipart_id: &MultipartId,
-    ) -> ObjectStoreResult<()> {
+        opts: PutMultipartOpts
+    ) -> ObjectStoreResult<Box<dyn MultipartUpload>> {
         todo!("Not yet implemented")
     }
 }
