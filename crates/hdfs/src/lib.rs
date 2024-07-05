@@ -2,13 +2,11 @@ use std::sync::Arc;
 
 use deltalake_core::logstore::{default_logstore, logstores, LogStore, LogStoreFactory};
 use deltalake_core::storage::{
-    factories, str_is_truthy, ObjectStoreFactory, ObjectStoreRef, StorageOptions,
+    factories, url_prefix_handler, ObjectStoreFactory, ObjectStoreRef, StorageOptions,
 };
-use deltalake_core::{DeltaResult, DeltaTableError, Path};
+use deltalake_core::{DeltaResult, Path};
+use hdfs_native_object_store::HdfsObjectStore;
 use url::Url;
-
-pub mod error;
-mod file;
 
 #[derive(Clone, Default, Debug)]
 pub struct HdfsFactory {}
@@ -19,16 +17,12 @@ impl ObjectStoreFactory for HdfsFactory {
         url: &Url,
         options: &StorageOptions,
     ) -> DeltaResult<(ObjectStoreRef, Path)> {
-
-        match url.scheme() {
-            "hdfs" => {
-                let store = Arc::new(file::HadoopFileStorageBackend::try_new(
-                    url.to_file_path().unwrap().to_str().expect("Parsed hdfs url"),
-                )?) as ObjectStoreRef;
-                Ok((store, Path::from("/")))
-            }
-            _ => Err(DeltaTableError::InvalidTableLocation(url.clone().into())),
-        }
+        let store: ObjectStoreRef = Arc::new(HdfsObjectStore::with_config(
+            url.as_str(),
+            options.0.clone(),
+        )?);
+        let prefix = Path::parse(url.path())?;
+        Ok((url_prefix_handler(store, prefix.clone()), prefix))
     }
 }
 
@@ -43,10 +37,10 @@ impl LogStoreFactory for HdfsFactory {
     }
 }
 
-/// Register an [ObjectStoreFactory] for common Hdfs [Url] schemes
+/// Register an [ObjectStoreFactory] for common HDFS [Url] schemes
 pub fn register_handlers(_additional_prefixes: Option<Url>) {
     let factory = Arc::new(HdfsFactory {});
-    for scheme in ["hdfs"].iter() {
+    for scheme in ["hdfs", "viewfs"].iter() {
         let url = Url::parse(&format!("{}://", scheme)).unwrap();
         factories().insert(url.clone(), factory.clone());
         logstores().insert(url.clone(), factory.clone());
