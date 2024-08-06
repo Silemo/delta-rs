@@ -1870,7 +1870,6 @@ fn _internal(m: &Bound<'_, PyModule>) -> PyResult<()> {
     deltalake::gcp::register_handlers(None);
     deltalake::hdfs::register_handlers(None);
     deltalake_mount::register_handlers(None);
-    deltalake_hdfs::register_handlers(None);
 
     let py = m.py();
     m.add("DeltaError", py.get_type_bound::<DeltaError>())?;

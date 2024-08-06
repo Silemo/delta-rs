@@ -519,7 +519,7 @@ def write_deltalake(
             file_options = ds.ParquetFileFormat().make_write_options(
                 use_compliant_nested_type=False
             )
-
+        print("DBG: LINE 495 \n")
         ds.write_dataset(
             data,
             base_dir="/",
@@ -538,6 +538,7 @@ def write_deltalake(
             filesystem=filesystem,
             max_partitions=max_partitions,
         )
+        print("DBG: LINE 497 \n")
 
         if table is None:
             write_deltalake_pyarrow(

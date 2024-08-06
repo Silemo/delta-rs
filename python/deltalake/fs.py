@@ -136,6 +136,7 @@ class DeltaStorageHandler(FileSystemHandler):
         Returns:
             NativeFile
         """
+        print("DBG: Before return pa.PythonFile(). Path: " + path + "\n")
         return pa.PythonFile(self._handler.open_output_stream(path, metadata))
 
     def get_file_info_selector(self, selector: FileSelector) -> List[FileInfo]:
